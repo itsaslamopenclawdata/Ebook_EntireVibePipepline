@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(where:*)",
+      "Bash(claude skills:*)",
+      "WebSearch",
+      "Bash(tree:*)",
+      "Bash(python:*)",
+      "Bash(if not exist \"F:\\\\Ebook\\\\vibe-pdf-platform\\\\Backend\\\\alembic\\\\versions\" mkdir \"F:\\\\Ebook\\\\vibe-pdf-platform\\\\Backend\\\\alembic\\\\versions\")",
+      "Bash(npx vite:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run build:*)",
+      "Bash(cmd /c \"dir /b \"\"F:\\\\Ebook\\\\vibe-pdf-platform\"\"\")",
+      "Bash(pip install:*)",
+      "Bash(test:*)",
+      "Bash(chmod:*)",
+      "Bash(findstr:*)",
+      "Bash(cmd:*)"
+    ]
+  }
+}
