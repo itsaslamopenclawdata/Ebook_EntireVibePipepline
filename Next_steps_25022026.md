@@ -28,10 +28,9 @@
 ---
 
 ### Remaining Tasks (Not Covered by Subagents):
-- Database migrations and schema setup
-- Google Drive integration completion
-- Celery task wiring to API
-- Production deployment execution
+- Database migrations and schema setup (Partially done - need alembic migrations run)
+- Production deployment execution (Still needs to be done)
+- Final integration testing
 
 ---
 
