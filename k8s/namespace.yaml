@@ -1,0 +1,46 @@
+# Kubernetes Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vibe-pdf
+  labels:
+    name: vibe-pdf
+    environment: production
+---
+# ResourceQuota
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: vibe-pdf-quota
+  namespace: vibe-pdf
+spec:
+  hard:
+    requests.cpu: "16"
+    requests.memory: 32Gi
+    limits.cpu: "32"
+    limits.memory: 64Gi
+    persistentvolumeclaims: "10"
+    services.loadbalancers: "2"
+    services.nodeports: "0"
+---
+# LimitRange
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: vibe-pdf-limits
+  namespace: vibe-pdf
+spec:
+  limits:
+    - max:
+        cpu: "8"
+        memory: "16Gi"
+      min:
+        cpu: "50m"
+        memory: "64Mi"
+      default:
+        cpu: "500m"
+        memory: "1Gi"
+      defaultRequest:
+        cpu: "100m"
+        memory: "256Mi"
+      type: Container

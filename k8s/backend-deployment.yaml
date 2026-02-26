@@ -1,0 +1,134 @@
+# Backend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vibe-pdf-backend
+  namespace: vibe-pdf
+  labels:
+    app: vibe-pdf
+    component: backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: vibe-pdf
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: vibe-pdf
+        component: backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/itsaslamopenclawdata/ebook-entirevibepipeline-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+              name: http
+            - containerPort: 5555
+              name: flower
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: vibe-pdf-secrets
+                  key: database-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: vibe-pdf-secrets
+                  key: redis-url
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: vibe-pdf-secrets
+                  key: anthropic-api-key
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: vibe-pdf-secrets
+                  key: openai-api-key
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+---
+# Backend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: vibe-pdf-backend
+  namespace: vibe-pdf
+  labels:
+    app: vibe-pdf
+    component: backend
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
+      name: http
+  selector:
+    app: vibe-pdf
+    component: backend
+---
+# Celery Worker Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vibe-pdf-celery
+  namespace: vibe-pdf
+  labels:
+    app: vibe-pdf
+    component: celery-worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: vibe-pdf
+      component: celery-worker
+  template:
+    metadata:
+      labels:
+        app: vibe-pdf
+        component: celery-worker
+    spec:
+      containers:
+        - name: celery-worker
+          image: ghcr.io/itsaslamopenclawdata/ebook-entirevibepipeline-backend:latest
+          command: ["celery", "-A", "app.worker", "worker", "--loglevel=info", "--concurrency=4"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: vibe-pdf-secrets
+                  key: database-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: vibe-pdf-secrets
+                  key: redis-url
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "4Gi"
+              cpu: "2000m"
