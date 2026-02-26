@@ -411,6 +411,321 @@ class ReviewReactionResponse(BaseModel):
     created_at: datetime
 
 
+# Generation Schemas
+class GenerationStatusEnum(str, Enum):
+    """Generation status enum."""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class GenerationRequest(BaseModel):
+    """Schema for book generation request."""
+    title: str = Field(..., min_length=1, max_length=500)
+    description: Optional[str] = None
+    genre: Optional[str] = None
+    target_word_count: int = Field(default=50000, ge=1000, le=200000)
+    style: Optional[str] = None
+    chapter_count: Optional[int] = Field(None, ge=1, le=100)
+    prompt: Optional[str] = None
+
+
+class GenerationProgressResponse(BaseModel):
+    """Schema for generation progress response."""
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: UUID
+    book_id: UUID
+    status: GenerationStatusEnum
+    progress_percent: float
+    current_chapter: Optional[int]
+    total_chapters: Optional[int]
+    error_message: Optional[str]
+    started_at: Optional[datetime]
+    completed_at: Optional[datetime]
+    created_at: datetime
+
+
+class GenerationStartResponse(BaseModel):
+    """Schema for generation start response."""
+    generation_id: UUID
+    book_id: UUID
+    status: GenerationStatusEnum
+    message: str
+
+
+class GenerationCancelResponse(BaseModel):
+    """Schema for generation cancel response."""
+    message: str
+    status: GenerationStatusEnum
+
+
+class GenerationRetryResponse(BaseModel):
+    """Schema for generation retry response."""
+    generation_id: UUID
+    book_id: UUID
+    status: GenerationStatusEnum
+    message: str
+
+
+# Book (User's Library) Schemas
+class BookBase(BaseModel):
+    """Base book schema."""
+    title: str
+    description: Optional[str] = None
+    cover_image_url: Optional[str] = None
+    genre: Optional[str] = None
+    tags: List[str] = []
+
+
+class BookCreate(BookBase):
+    """Schema for book creation."""
+    content: Optional[str] = None
+
+
+class BookUpdate(BaseModel):
+    """Schema for book update."""
+    title: Optional[str] = None
+    description: Optional[str] = None
+    cover_image_url: Optional[str] = None
+    content: Optional[str] = None
+    genre: Optional[str] = None
+    tags: Optional[List[str]] = None
+    status: Optional[BookStatusEnum] = None
+
+
+class BookResponse(BaseModel):
+    """Schema for book response."""
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: UUID
+    author_id: UUID
+    title: str
+    description: Optional[str]
+    cover_image_url: Optional[str]
+    status: BookStatusEnum
+    content: Optional[str]
+    genre: Optional[str]
+    tags: List[str]
+    version: int
+    view_count: int
+    download_count: int
+    rating_average: float
+    rating_count: int
+    created_at: datetime
+    updated_at: datetime
+    published_at: Optional[datetime]
+    author: Optional[UserPublicResponse] = None
+
+
+class BookListResponse(BaseModel):
+    """Schema for book list response."""
+    items: List[BookResponse]
+    total: int
+    skip: int
+    limit: int
+
+
+class ChapterInBookResponse(BaseModel):
+    """Schema for chapter in book response."""
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: UUID
+    ebook_id: UUID
+    chapter_number: int
+    title: str
+    content: Optional[str]
+    version: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class ChapterListResponse(BaseModel):
+    """Schema for chapter list response."""
+    items: List[ChapterInBookResponse]
+    total: int
+
+
+class ChapterCreateInBook(BaseModel):
+    """Schema for chapter creation within a book."""
+    title: str
+    content: Optional[str] = None
+    chapter_number: int
+
+
+# Profile Schemas
+class ProfileResponse(BaseModel):
+    """Schema for profile response."""
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: UUID
+    email: str
+    username: Optional[str]
+    full_name: Optional[str]
+    avatar_url: Optional[str]
+    bio: Optional[str]
+    profile_visibility: UserProfileVisibilityEnum
+    is_active: bool
+    is_verified: bool
+    is_superuser: bool
+    created_at: datetime
+    last_login: Optional[datetime]
+
+
+class ProfileUpdate(BaseModel):
+    """Schema for profile update."""
+    full_name: Optional[str] = None
+    username: Optional[str] = None
+    bio: Optional[str] = None
+    avatar_url: Optional[str] = None
+    profile_visibility: Optional[UserProfileVisibilityEnum] = None
+
+
+class ReadingPreferences(BaseModel):
+    """Schema for reading preferences."""
+    preferred_genres: List[str] = []
+    font_size: Optional[str] = None
+    theme: Optional[str] = None  # light, dark, sepia
+    reading_speed_wpm: Optional[int] = Field(None, ge=50, le=1000)
+    auto_scroll: bool = False
+
+
+class ReadingPreferencesUpdate(BaseModel):
+    """Schema for updating reading preferences."""
+    preferred_genres: Optional[List[str]] = None
+    font_size: Optional[str] = None
+    theme: Optional[str] = None
+    reading_speed_wpm: Optional[int] = Field(None, ge=50, le=1000)
+    auto_scroll: Optional[bool] = None
+
+
+class ActivityItem(BaseModel):
+    """Schema for activity item."""
+    id: UUID
+    activity_type: str
+    book_id: Optional[UUID]
+    book_title: Optional[str]
+    chapter_id: Optional[UUID]
+    chapter_title: Optional[str]
+    description: str
+    created_at: datetime
+
+
+class ActivityListResponse(BaseModel):
+    """Schema for activity list response."""
+    items: List[ActivityItem]
+    total: int
+    skip: int
+    limit: int
+
+
+# MCP Integration Schemas
+class GoogleDriveUploadRequest(BaseModel):
+    """Schema for Google Drive upload request."""
+    file_name: str
+    folder_id: Optional[str] = None
+    mime_type: Optional[str] = "application/pdf"
+
+
+class GoogleDriveUploadResponse(BaseModel):
+    """Schema for Google Drive upload response."""
+    file_id: str
+    file_name: str
+    web_view_link: str
+    download_link: str
+    created_time: datetime
+
+
+class GoogleDriveDownloadRequest(BaseModel):
+    """Schema for Google Drive download request."""
+    file_id: str
+    output_file_name: Optional[str] = None
+
+
+class GoogleDriveDownloadResponse(BaseModel):
+    """Schema for Google Drive download response."""
+    file_name: str
+    file_path: str
+    mime_type: str
+    size_bytes: int
+
+
+class GoogleDriveFileResponse(BaseModel):
+    """Schema for Google Drive file info."""
+    file_id: str
+    file_name: str
+    mime_type: str
+    size_bytes: int
+    web_view_link: str
+    created_time: datetime
+    modified_time: datetime
+
+
+class PDFManipulationRequest(BaseModel):
+    """Schema for PDF manipulation request."""
+    operation: str = Field(..., pattern="^(merge|split|extract|compress|watermark)$")
+
+
+class PDFMergeRequest(PDFManipulationRequest):
+    """Schema for PDF merge request."""
+    operation: str = "merge"
+    file_ids: List[str] = Field(..., min_items=2)
+    output_name: Optional[str] = None
+
+
+class PDFSplitRequest(PDFManipulationRequest):
+    """Schema for PDF split request."""
+    operation: str = "split"
+    file_id: str
+    split_type: str = Field(..., pattern="^(pages|range)$")
+    pages: Optional[List[int]] = None  # For split by pages
+    start_page: Optional[int] = None  # For split by range
+    end_page: Optional[int] = None
+
+
+class PDFExtractRequest(PDFManipulationRequest):
+    """Schema for PDF extract request."""
+    operation: str = "extract"
+    file_id: str
+    pages: List[int] = Field(..., min_items=1)
+    output_name: Optional[str] = None
+
+
+class PDFCompressRequest(PDFManipulationRequest):
+    """Schema for PDF compress request."""
+    operation: str = "compress"
+    file_id: str
+    quality: str = Field(default="medium", pattern="^(low|medium|high)$")
+
+
+class PDFWatermarkRequest(PDFManipulationRequest):
+    """Schema for PDF watermark request."""
+    operation: str = "watermark"
+    file_id: str
+    text: str
+    position: str = Field(default="center", pattern="^(center|corner|custom)$")
+    opacity: float = Field(default=0.3, ge=0.1, le=1.0)
+    font_size: Optional[int] = Field(default=48, ge=8, le=144)
+
+
+class PDFManipulationResponse(BaseModel):
+    """Schema for PDF manipulation response."""
+    operation: str
+    success: bool
+    output_file_id: Optional[str] = None
+    output_file_name: Optional[str] = None
+    output_file_path: Optional[str] = None
+    message: str
+
+
+class PDFListResponse(BaseModel):
+    """Schema for PDF list response."""
+    items: List[GoogleDriveFileResponse]
+    total: int
+
+
 # Common Response Schemas
 class MessageResponse(BaseModel):
     """Generic message response."""
