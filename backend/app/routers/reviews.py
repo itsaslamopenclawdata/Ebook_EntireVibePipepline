@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func
-from app.core.database select, and import get_db
+from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User, Ebook, Review, ReviewReaction, BookStatus
 from app.schemas.schemas import (
