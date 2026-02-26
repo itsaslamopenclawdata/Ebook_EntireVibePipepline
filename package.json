@@ -1,0 +1,21 @@
+{
+  "name": "ebook-load-tests",
+  "version": "1.0.0",
+  "description": "Load tests for Ebook Vibe Platform",
+  "main": "index.js",
+  "scripts": {
+    "test:load": "node backend/tests/load/api_response_times.js",
+    "test:concurrent": "node backend/tests/load/concurrent_users.js",
+    "test:load:custom": "node backend/tests/load/api_response_times.js --concurrent=50 --requests=100",
+    "test:concurrent:custom": "node backend/tests/load/concurrent_users.js --users=100 --duration=60"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "keywords": [
+    "load-test",
+    "performance",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT"
+}
