@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     STORAGE_BACKEND: Literal["local", "google_drive"] = "local"
     LOCAL_STORAGE_PATH: str = "/tmp/vibepdf"
     GOOGLE_CREDENTIALS_PATH: Optional[str] = None
+    GOOGLE_TOKEN_PATH: Optional[str] = None
     GOOGLE_DRIVE_FOLDER_ID: Optional[str] = None
 
     # CORS

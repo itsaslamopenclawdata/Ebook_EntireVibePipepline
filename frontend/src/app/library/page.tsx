@@ -1,8 +1,9 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
   Filter, 
@@ -14,163 +15,145 @@ import {
   Clock,
   Star,
   MoreVertical,
-  Trash2,
-  Edit,
-  Download,
   ChevronDown,
   X,
-  Folder
-} from 'lucide-react'
+  Folder,
+  Loader2,
+  AlertCircle,
+  Plus
+} from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import api from '@/lib/api';
+import type { Ebook, BookStatus } from '@/types/api';
 
-// Mock books data
-const allBooks = [
-  {
-    id: 1,
-    title: 'The Art of Programming',
-    author: 'John Smith',
-    cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=400&fit=crop',
-    category: 'Technology',
-    rating: 4.8,
-    progress: 75,
-    lastRead: '2 hours ago',
-    addedDate: '2026-01-15',
-  },
-  {
-    id: 2,
-    title: 'Clean Code',
-    author: 'Robert Martin',
-    cover: 'https://images.unsplash.com/photo-1587620962725-abab7fe55159?w=300&h=400&fit=crop',
-    category: 'Technology',
-    rating: 4.9,
-    progress: 45,
-    lastRead: 'Yesterday',
-    addedDate: '2026-01-10',
-  },
-  {
-    id: 3,
-    title: 'Design Patterns',
-    author: 'Gang of Four',
-    cover: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?w=300&h=400&fit=crop',
-    category: 'Technology',
-    rating: 4.7,
-    progress: 20,
-    lastRead: '3 days ago',
-    addedDate: '2026-01-08',
-  },
-  {
-    id: 4,
-    title: 'The Pragmatic Programmer',
-    author: 'David Thomas',
-    cover: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=300&h=400&fit=crop',
-    category: 'Technology',
-    rating: 4.6,
-    progress: 100,
-    lastRead: '1 week ago',
-    addedDate: '2026-01-05',
-  },
-  {
-    id: 5,
-    title: 'Introduction to Psychology',
-    author: 'James Kalat',
-    cover: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=400&fit=crop',
-    category: 'Psychology',
-    rating: 4.5,
-    progress: 0,
-    lastRead: 'Never',
-    addedDate: '2026-02-01',
-  },
-  {
-    id: 6,
-    title: 'Thinking, Fast and Slow',
-    author: 'Daniel Kahneman',
-    cover: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=300&h=400&fit=crop',
-    category: 'Psychology',
-    rating: 4.9,
-    progress: 30,
-    lastRead: '5 days ago',
-    addedDate: '2026-01-20',
-  },
-  {
-    id: 7,
-    title: 'History of Modern Art',
-    author: 'H.H. Arnason',
-    cover: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=300&h=400&fit=crop',
-    category: 'Art',
-    rating: 4.4,
-    progress: 0,
-    lastRead: 'Never',
-    addedDate: '2026-02-10',
-  },
-  {
-    id: 8,
-    title: 'The Great Gatsby',
-    author: 'F. Scott Fitzgerald',
-    cover: 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=300&h=400&fit=crop',
-    category: 'Fiction',
-    rating: 4.7,
-    progress: 60,
-    lastRead: '1 day ago',
-    addedDate: '2026-01-25',
-  },
-]
+type ViewMode = 'grid' | 'list';
+type SortOption = 'title' | 'author' | 'rating' | 'created_at';
 
-const categories = ['All', 'Technology', 'Psychology', 'Art', 'Fiction']
-const shelves = ['All Books', 'Currently Reading', 'Finished', 'Want to Read']
-
-type ViewMode = 'grid' | 'list'
-type SortOption = 'title' | 'author' | 'rating' | 'lastRead' | 'addedDate'
+const categories = ['All', 'Technology', 'Psychology', 'Art', 'Fiction', 'Science', 'History'];
+const shelves = ['All Books', 'Currently Reading', 'Finished', 'Want to Read'];
 
 export default function LibraryPage() {
-  const [viewMode, setViewMode] = useState<ViewMode>('grid')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('All')
-  const [selectedShelf, setSelectedShelf] = useState('All Books')
-  const [sortBy, setSortBy] = useState<SortOption>('lastRead')
-  const [sortAsc, setSortAsc] = useState(false)
-  const [showFilters, setShowFilters] = useState(false)
-  const [showSortMenu, setShowSortMenu] = useState(false)
+  const router = useRouter();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedShelf, setSelectedShelf] = useState('All Books');
+  const [sortBy, setSortBy] = useState<SortOption>('created_at');
+  const [sortAsc, setSortAsc] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showSortMenu, setShowSortMenu] = useState(false);
+  
+  // Data state
+  const [books, setBooks] = useState<Ebook[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredBooks = allBooks
+  // Fetch books
+  const fetchBooks = useCallback(async () => {
+    if (!isAuthenticated) return;
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Fetch user's books
+      const response = await api.listMyBooks({ limit: 100 });
+      setBooks(response.items);
+    } catch (err) {
+      console.error('Failed to fetch books:', err);
+      setError('Failed to load books. Please try again.');
+      setBooks([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    // Redirect if not authenticated
+    if (!authLoading && !isAuthenticated) {
+      router.push('/auth/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchBooks();
+    }
+  }, [isAuthenticated, fetchBooks]);
+
+  // Filter and sort books
+  const filteredBooks = books
     .filter(book => {
-      const matchesSearch = book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        book.author.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchesCategory = selectedCategory === 'All' || book.category === selectedCategory
+      const matchesSearch = 
+        book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        book.author?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        book.author?.username?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategory === 'All' || book.genre === selectedCategory;
+      // Shelf filtering - based on book status
       const matchesShelf = selectedShelf === 'All Books' ||
-        (selectedShelf === 'Currently Reading' && book.progress > 0 && book.progress < 100) ||
-        (selectedShelf === 'Finished' && book.progress === 100) ||
-        (selectedShelf === 'Want to Read' && book.progress === 0)
-      return matchesSearch && matchesCategory && matchesShelf
+        (selectedShelf === 'Currently Reading' && book.status === 'draft') ||
+        (selectedShelf === 'Finished' && book.status === 'published') ||
+        (selectedShelf === 'Want to Read' && book.status === 'draft');
+      return matchesSearch && matchesCategory && matchesShelf;
     })
     .sort((a, b) => {
-      let comparison = 0
+      let comparison = 0;
       switch (sortBy) {
         case 'title':
-          comparison = a.title.localeCompare(b.title)
-          break
+          comparison = a.title.localeCompare(b.title);
+          break;
         case 'author':
-          comparison = a.author.localeCompare(b.author)
-          break
+          comparison = (a.author?.full_name || '').localeCompare(b.author?.full_name || '');
+          break;
         case 'rating':
-          comparison = b.rating - a.rating
-          break
-        case 'lastRead':
-          comparison = a.lastRead.localeCompare(b.lastRead)
-          break
-        case 'addedDate':
-          comparison = new Date(b.addedDate).getTime() - new Date(a.addedDate).getTime()
-          break
+          comparison = b.rating_average - a.rating_average;
+          break;
+        case 'created_at':
+          comparison = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          break;
       }
-      return sortAsc ? comparison : -comparison
-    })
+      return sortAsc ? -comparison : comparison;
+    });
 
   const getSortLabel = () => {
     switch (sortBy) {
-      case 'title': return 'Title'
-      case 'author': return 'Author'
-      case 'rating': return 'Rating'
-      case 'lastRead': return 'Last Read'
-      case 'addedDate': return 'Date Added'
+      case 'title': return 'Title';
+      case 'author': return 'Author';
+      case 'rating': return 'Rating';
+      case 'created_at': return 'Date Added';
     }
+  };
+
+  // Loading state
+  if (authLoading || (isLoading && !books.length)) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading your library...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && !books.length) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md p-6">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Failed to load library</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button
+            onClick={fetchBooks}
+            className="px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -242,17 +225,17 @@ export default function LibraryPage() {
                     exit={{ opacity: 0, y: -10 }}
                     className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-10"
                   >
-                    {(['title', 'author', 'rating', 'lastRead', 'addedDate'] as SortOption[]).map((option) => (
+                    {(['title', 'author', 'rating', 'created_at'] as SortOption[]).map((option) => (
                       <button
                         key={option}
                         onClick={() => {
                           if (sortBy === option) {
-                            setSortAsc(!sortAsc)
+                            setSortAsc(!sortAsc);
                           } else {
-                            setSortBy(option)
-                            setSortAsc(false)
+                            setSortBy(option);
+                            setSortAsc(false);
                           }
-                          setShowSortMenu(false)
+                          setShowSortMenu(false);
                         }}
                         className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${
                           sortBy === option ? 'text-primary-600 font-medium' : 'text-gray-700'
@@ -261,8 +244,7 @@ export default function LibraryPage() {
                         {option === 'title' && 'Title'}
                         {option === 'author' && 'Author'}
                         {option === 'rating' && 'Rating'}
-                        {option === 'lastRead' && 'Last Read'}
-                        {option === 'addedDate' && 'Date Added'}
+                        {option === 'created_at' && 'Date Added'}
                         {sortBy === option && (
                           <span className="ml-2">{sortAsc ? '↑' : '↓'}</span>
                         )}
@@ -359,9 +341,9 @@ export default function LibraryPage() {
               )}
               <button
                 onClick={() => {
-                  setSelectedShelf('All Books')
-                  setSelectedCategory('All')
-                  setSearchQuery('')
+                  setSelectedShelf('All Books');
+                  setSelectedCategory('All');
+                  setSearchQuery('');
                 }}
                 className="text-sm text-gray-500 hover:text-gray-700 underline"
               >
@@ -375,14 +357,21 @@ export default function LibraryPage() {
       {/* Results */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-4 text-sm text-gray-500">
-          Showing {filteredBooks.length} of {allBooks.length} books
+          Showing {filteredBooks.length} of {books.length} books
         </div>
 
         {filteredBooks.length === 0 ? (
           <div className="text-center py-16">
             <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No books found</h3>
-            <p className="text-gray-600">Try adjusting your filters or search query</p>
+            <p className="text-gray-600 mb-6">Try adjusting your filters or search query</p>
+            <Link
+              href="/library"
+              className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add New Book
+            </Link>
           </div>
         ) : viewMode === 'grid' ? (
           <motion.div 
@@ -399,17 +388,15 @@ export default function LibraryPage() {
               >
                 <Link href={`/reader?id=${book.id}`}>
                   <div className="relative aspect-[3/4] rounded-xl overflow-hidden mb-3 shadow-sm group-hover:shadow-md transition-shadow">
-                    <img
-                      src={book.cover}
-                      alt={book.title}
-                      className="w-full h-full object-cover"
-                    />
-                    {book.progress > 0 && (
-                      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200">
-                        <div
-                          className="h-full bg-primary-500"
-                          style={{ width: `${book.progress}%` }}
-                        />
+                    {book.cover_image_url ? (
+                      <img
+                        src={book.cover_image_url}
+                        alt={book.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-primary-400 to-accent-400 flex items-center justify-center">
+                        <BookOpen className="w-12 h-12 text-white/80" />
                       </div>
                     )}
                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -417,19 +404,28 @@ export default function LibraryPage() {
                         <MoreVertical className="w-4 h-4" />
                       </button>
                     </div>
+                    {book.status === 'draft' && (
+                      <div className="absolute bottom-0 left-0 right-0 py-1 bg-yellow-500/90 text-white text-xs text-center">
+                        Draft
+                      </div>
+                    )}
                   </div>
                 </Link>
                 <h3 className="font-semibold text-gray-900 truncate group-hover:text-primary-600 transition-colors">
                   {book.title}
                 </h3>
-                <p className="text-sm text-gray-600 truncate">{book.author}</p>
+                <p className="text-sm text-gray-600 truncate">{book.author?.full_name || book.author?.username || 'Unknown Author'}</p>
                 <div className="flex items-center gap-2 mt-1">
                   <div className="flex items-center">
                     <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                    <span className="text-sm ml-1">{book.rating}</span>
+                    <span className="text-sm ml-1">{book.rating_average > 0 ? book.rating_average.toFixed(1) : 'N/A'}</span>
                   </div>
-                  <span className="text-gray-300">•</span>
-                  <span className="text-sm text-gray-500">{book.category}</span>
+                  {book.genre && (
+                    <>
+                      <span className="text-gray-300">•</span>
+                      <span className="text-sm text-gray-500">{book.genre}</span>
+                    </>
+                  )}
                 </div>
               </motion.div>
             ))}
@@ -449,11 +445,17 @@ export default function LibraryPage() {
               >
                 <Link href={`/reader?id=${book.id}`}>
                   <div className="w-20 h-28 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                    <img
-                      src={book.cover}
-                      alt={book.title}
-                      className="w-full h-full object-cover"
-                    />
+                    {book.cover_image_url ? (
+                      <img
+                        src={book.cover_image_url}
+                        alt={book.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-primary-400 to-accent-400 flex items-center justify-center">
+                        <BookOpen className="w-8 h-8 text-white/80" />
+                      </div>
+                    )}
                   </div>
                 </Link>
                 <div className="flex-1 min-w-0">
@@ -464,7 +466,7 @@ export default function LibraryPage() {
                           {book.title}
                         </h3>
                       </Link>
-                      <p className="text-sm text-gray-600">{book.author}</p>
+                      <p className="text-sm text-gray-600">{book.author?.full_name || book.author?.username || 'Unknown Author'}</p>
                     </div>
                     <button className="p-2 hover:bg-gray-100 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
                       <MoreVertical className="w-5 h-5 text-gray-500" />
@@ -473,30 +475,27 @@ export default function LibraryPage() {
                   <div className="flex items-center gap-4 mt-3">
                     <div className="flex items-center">
                       <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                      <span className="text-sm ml-1">{book.rating}</span>
+                      <span className="text-sm ml-1">{book.rating_average > 0 ? book.rating_average.toFixed(1) : 'N/A'}</span>
                     </div>
-                    <span className="px-2 py-1 bg-gray-100 rounded-full text-xs text-gray-600">
-                      {book.category}
-                    </span>
+                    {book.genre && (
+                      <span className="px-2 py-1 bg-gray-100 rounded-full text-xs text-gray-600">
+                        {book.genre}
+                      </span>
+                    )}
                     <span className="flex items-center text-sm text-gray-500">
                       <Clock className="w-4 h-4 mr-1" />
-                      {book.lastRead}
+                      {new Date(book.created_at).toLocaleDateString()}
+                    </span>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      book.status === 'published' 
+                        ? 'bg-green-100 text-green-700' 
+                        : book.status === 'draft'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {book.status}
                     </span>
                   </div>
-                  {book.progress > 0 && (
-                    <div className="mt-3">
-                      <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                        <span>Progress</span>
-                        <span>{book.progress}%</span>
-                      </div>
-                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-primary-500 to-accent-500 rounded-full"
-                          style={{ width: `${book.progress}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
                 </div>
               </motion.div>
             ))}
@@ -504,5 +503,5 @@ export default function LibraryPage() {
         )}
       </div>
     </div>
-  )
+  );
 }

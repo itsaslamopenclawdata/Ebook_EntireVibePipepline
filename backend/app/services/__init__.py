@@ -24,6 +24,34 @@ from app.services.sentiment import (
     SentimentResult,
     get_sentiment_analyzer,
 )
+from app.services.storage import (
+    GoogleDriveStorageError,
+    AuthenticationError,
+    PermissionError,
+    NotFoundError,
+    QuotaExceededError,
+    UploadError,
+    DownloadError,
+    RateLimitError,
+    GoogleDriveStorage,
+    get_drive_storage,
+)
+from app.services.storage_service import (
+    StorageService,
+    get_storage_service,
+)
+from app.services.book_service import (
+    BookService,
+    get_book_service,
+)
+from app.services.generation_service import (
+    GenerationService,
+    get_generation_service,
+)
+from app.services.profile_service import (
+    ProfileService,
+    get_profile_service,
+)
 
 __all__ = [
     # Cache
@@ -45,4 +73,27 @@ __all__ = [
     "QueryIntent",
     "SearchResult",
     "get_nlp_query_service",
+    # Storage - Exceptions
+    "GoogleDriveStorageError",
+    "AuthenticationError",
+    "PermissionError",
+    "NotFoundError",
+    "QuotaExceededError",
+    "UploadError",
+    "DownloadError",
+    "RateLimitError",
+    # Storage - Services
+    "GoogleDriveStorage",
+    "get_drive_storage",
+    "StorageService",
+    "get_storage_service",
+    # Book Service
+    "BookService",
+    "get_book_service",
+    # Generation Service
+    "GenerationService",
+    "get_generation_service",
+    # Profile Service
+    "ProfileService",
+    "get_profile_service",
 ]
